@@ -1,0 +1,56 @@
+//sending form data to backend(voting)
+//sending POST req like form submission 
+const voteRecipe = async () => {
+  const formData = new URLSearchParams();
+  formData.append("action", "vote_recipe");
+  formData.append("recipe_id", "123");
+  formData.append("user_id", "456");
+  formData.append("competition_id", "789");
+
+  try {
+    const response = await fetch("http://your-backend-url/api.php", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",  // Specify form-urlencoded
+      },
+      body: formData.toString(), // Convert to URL-encoded string
+    });
+
+    const result = await response.json(); // Parse JSON response
+    console.log(result);
+  } catch (error) {
+    console.error("Error voting for recipe:", error);
+  }
+};
+
+// Call function to send request
+voteRecipe();
+
+
+//sending in jsonconst 
+voteRecipe = async () => {
+  const requestData = {
+    action: "vote_recipe",
+    recipe_id: 123,
+    user_id: 456,
+    competition_id: 789
+  };
+
+  try {
+    const response = await fetch("http://your-backend-url/api.php", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",  // Specify JSON format
+      },
+      body: JSON.stringify(requestData), // Convert to JSON string
+    });
+
+    const result = await response.json(); // Parse JSON response
+    console.log(result);
+  } catch (error) {
+    console.error("Error voting for recipe:", error);
+  }
+};
+
+// Call function to send request
+voteRecipe();
