@@ -2,18 +2,26 @@
 require_once '../database.php';
 class Competition
 {
+  private static function validateAndFormatDate($date)
+  {
+    $timestamp = strtotime($date);
+    return $timestamp ? date('Y-m-d', $timestamp) : false;
+  }
   public static function createCompetition($title, $description, $start_date, $end_date, $voting_end_date, $database)
   {
     $conn = $database->conn;
-    $title = $conn->real_escape_string($title);
-    $description = $conn->real_escape_string($description);
+
     $start_date = date('Y-m-d', strtotime($start_date));
     $end_date = date('Y-m-d', strtotime($end_date));
     $voting_end_date = date('Y-m-d', strtotime($voting_end_date));
+    if (!$start_date || !$end_date || !$voting_end_date) {
+      die("Invalid date format.");
+    }
+
     $today = date('Y-m-d');
     $active = ($today >= $start_date && $today <= $end_date) ? 1 : 0;
 
-    $sql = "INSERT INTO competitions (title, description, start_date, end_date, voting_end_date, active) VALUES ('$title', '$description', '$start_date', '$end_date', '$voting_end_date', '$active')";
+    $sql = "INSERT INTO competitions (title, description, start_date, end_date, voting_end_date, is_active) VALUES ('$title', '$description', '$start_date', '$end_date', '$voting_end_date', '$active')";
     $result = $conn->query($sql);
     if (!$result) {
       die("Query Error:" . mysqli_error($conn));
@@ -39,7 +47,7 @@ class Competition
   public static function getCompetitionActiveStatus($competition_id, $database)
   {
     $conn = $database->conn;
-    $sql = "SELECT active FROM competitions WHERE id = $competition_id";
+    $sql = "SELECT active FROM competitions WHERE competition_id = $competition_id";
     $result = $conn->query($sql);
     if (!$result) {
       die("Query Error:" . mysqli_error($conn));
@@ -50,7 +58,7 @@ class Competition
   public static function setCompetitionToInactive($competition_id, $database)
   {
     $conn = $database->conn;
-    $sql = "UPDATE competitions SET active = 0 WHERE id = $competition_id";
+    $sql = "UPDATE competitions SET active = 0 WHERE competition_id = $competition_id";
     $result = $conn->query($sql);
     if (!$result) {
       die("Query Error:" . mysqli_error($conn));
@@ -61,7 +69,7 @@ class Competition
   public static function getCompetitionById($id, $database)
   {
     $conn = $database->conn;
-    $sql = "SELECT * FROM competitions WHERE id = $id";
+    $sql = "SELECT * FROM competitions WHERE competition_id = $id";
     $result = $conn->query($sql);
     if (!$result) {
       die("Query error" . mysqli_error($conn));
@@ -73,7 +81,7 @@ class Competition
   public static function updateCompetition($id, $title, $description, $start_date, $end_date, $voting_end_date, $database)
   {
     $conn = $database->conn;
-    $sql = "UPDATE competitions SET title = '$title', description = '$description', start_date = '$start_date', end_date = '$end_date', voting_end_date = '$voting_end_date' WHERE id = $id";
+    $sql = "UPDATE competitions SET title = '$title', description = '$description', start_date = '$start_date', end_date = '$end_date', voting_end_date = '$voting_end_date' WHERE competition_id = $id";
     $result = $conn->query($sql);
     if (!$result) {
       die("Query error" . mysqli_error($conn));
@@ -85,7 +93,7 @@ class Competition
   public static function deleteCompetition($id, $database)
   {
     $conn = $database->conn;
-    $sql = "DELETE FROM competitions WHERE id = $id";
+    $sql = "DELETE FROM competitions WHERE competition_id = $id";
     $result = $conn->query($sql);
     if (!$result) {
       die("Query error" . mysqli_error($conn));
@@ -131,7 +139,8 @@ class Competition
   public static function getCompetitionRecipes($competition_id, $database)
   {   //get all recipes in a competition
     $conn = $database->conn;
-    $sql = "SELECT r.*, cr.votes FROM recipes r JOIN competition_recipes cr ON r.id = cr.recipe_id WHERE cr.competition_id = $competition_id";
+    $sql = "SELECT r.*, COUNT(v.vote_id) AS votesCount FROM recipes r JOIN votes v ON r.recipe_id = v.recipe_id JOIN competitions c ON v.competition_id = c.competition_id WHERE c.competition_id = $competition_id
+        GROUP BY r.recipe_id";
     $result = $conn->query($sql);
     if (!$result) {
       die("Query error" . mysqli_error($conn));
@@ -142,7 +151,7 @@ class Competition
   public static function getWinner($competition_id, $database)
   {
     $conn = $database->conn;
-    $sql = "SELECT r.*, cr.votes FROM recipes r JOIN competition_recipes cr ON r.id = cr.recipe_id WHERE cr.competition_id = $competition_id ORDER BY cr.votes DESC LIMIT 1";
+    $sql = "SELECT r.*, cr.votes FROM recipes r JOIN competition_entries cr ON r.id = cr.recipe_id WHERE cr.competition_id = $competition_id ORDER BY cr.votes DESC LIMIT 1";
     $result = $conn->query($sql);
     if (!$result) {
       die("Query error" . mysqli_error($conn));

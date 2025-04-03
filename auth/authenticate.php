@@ -20,7 +20,7 @@ class Authenticate
     $base64Payload = base64_encode(json_encode($payload));
     $signature = hash_hmac('sha256', $base64Header . '.' . $base64Payload, 'secret', true);
     $base64Signature = base64_encode($signature);
-    return $base64Header . '.' . $base64Payload . '.' . $base64Signature;
+    return "{$base64Header}.{$base64Payload}.{$base64Signature}";
   }
 
   public static function verifyJWT($jwt)
@@ -29,7 +29,9 @@ class Authenticate
     if (count($parts) !== 3) {    //if jwt format is not valid
       return false;
     }
-    if (!self::checkExpired($parts[1])) {
+    $base64Payload = $parts[1];   //to access exp, must decode payload, previously encoded into base64 
+    $pay = json_decode(base64_decode($base64Payload), true);    //return assoc array after json decode 
+    if (!self::checkExpired($pay)) {
       return false;
     }
     $base64Header = $parts[0];
@@ -47,4 +49,5 @@ class Authenticate
     }
     return true;
   }
+
 }

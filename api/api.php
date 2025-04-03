@@ -3,52 +3,43 @@ require_once '../models/Votes.php';
 require_once '../models/Comments.php';
 require_once '../database.php';
 require_once '../auth/authenticate.php';
+require_once '../models/Competition.php';
 header('Content-Type: application/json');
 header("Access-Control-Allow-Origin: http://localhost:3000"); // Allow frontend domain, if front-end on port 3000 local host, edit if other ports
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS"); // Allowed methods
 header("Access-Control-Allow-Headers: Content-Type, Authorization"); // Allowed headers
 header("Access-Control-Allow-Credentials: true"); // Allow cookies/auth headers
 
-$database = new Database("localhost", "root", "", "recipe_competition");
-
-//verify user identity
-if (isset($_COOKIE['JWT'])) {
-  $jwt = $_COOKIE['JWT'];
-  $isAuthenticated = Authenticate::verifyJWT($jwt);
-  if (!$isAuthenticated) {
-    http_response_code(401);
-    echo json_encode(['message' => 'Unauthorized user, incorrect JWT token or expired']);
-    exit;
-  }
-} else {
-  http_response_code(401);
-  echo json_encode(['message' => 'User not logged in, login first']);
+$database = new Database("localhost", "root", "", "recipedatabase");
+if (!$database->conn) {
+  http_response_code(500);
+  echo json_encode(['message' => 'Failed to connect to database']);
   exit;
 }
 
-//Check if competition is over, run every time when user requests
+// $headers = getallheaders();
+// if (isset($headers['Authorization'])) {
+//   $authHeader = $headers['Authorization'];
+//   $jwt = str_replace("Bearer ", "", $authHeader); // Remove "Bearer " prefix
+//   if (!Authenticate::verifyJWT($jwt)) {
+//     http_response_code(401);
+//     echo json_encode(['message' => 'Invalid JWT token']);
+//     exit;
+//   }
+// } else {
+//   http_response_code(201);
+//   echo json_encode(['message' => 'No JWT token detected']);
+//   exit;
+// }
+$userID = $_REQUEST['userID'] ?? null;    //null first, check at end, maybe set error if really needed
+$username = $_REQUEST['username'] ?? null;
+$role = $_REQUEST['role'] ?? null;
+
+//Check if competition is over, run every time when user requests   
 $activeCompetitions = Competition::getAllCompetitions($database, true);   //get all active competitions
 foreach ($activeCompetitions as $competition) {
   if (date('Y-m-d') >= $competition['end_date']) {
     Competition::setCompetitionToInactive($competition['id'], $database);   //set competition to inactive when end time is over
-  }
-}
-
-//Create Competition by admin 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'create_competition') {
-  $data = json_decode(file_get_contents('php://input'), true);
-  $name = $data['name'];
-  $description = $data['description'];
-  $start_date = $data['start_date'];
-  $end_date = $data['end_date'];
-  $status = $data['status'];
-  $result = Competition::createCompetition($name, $description, $start_date, $end_date, $status, $database);
-  if ($result) {
-    http_response_code(201);
-    echo json_encode(['message' => 'Competition created successfully']);
-  } else {
-    http_response_code(500);
-    echo json_encode(['message' => 'Failed to create competition']);
   }
 }
 
